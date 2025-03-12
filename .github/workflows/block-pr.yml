@@ -1,0 +1,43 @@
+name: Block PR if Test Coverage < 75%
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-
+
+      - name: Run tests with JaCoCo
+        run: mvn clean verify
+
+      - name: Extract coverage
+        run: |
+          COVERAGE=$(grep -oP '<counter type="LINE" covered="\d+" missed="\d+"' target/site/jacoco/jacoco.xml | awk -F'"' '{print $4 / ($4 + $6) * 100}')
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+
+      - name: Fail if coverage < 75%
+        run: |
+          if (( $(echo "$COVERAGE < 75" | bc -l) )); then
+            echo "❌ Test coverage is below 75%. Fix it before merging."
+            exit 1
+          fi
+        shell: bash
