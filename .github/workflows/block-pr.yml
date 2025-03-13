@@ -29,9 +29,20 @@ jobs:
       - name: Run tests with JaCoCo
         run: mvn clean verify
 
-      - name: Extract coverage
+      - name: Extract test coverage
         run: |
-          COVERAGE=$(grep -oP '<counter type="LINE" covered="\d+" missed="\d+"' target/site/jacoco/jacoco.xml | awk -F'"' '{print $4 / ($4 + $6) * 100}')
+          COVERED_LINES=$(grep -oP '(?<=covered=")\d+' target/site/jacoco/jacoco.xml | paste -sd+ - | bc)
+          MISSED_LINES=$(grep -oP '(?<=missed=")\d+' target/site/jacoco/jacoco.xml | paste -sd+ - | bc)
+          
+          if [[ -z "$COVERED_LINES" || -z "$MISSED_LINES" ]]; then
+            echo "❌ Failed to extract coverage data. Ensure tests are running and JaCoCo is generating reports."
+            exit 1
+          fi
+
+          TOTAL_LINES=$((COVERED_LINES + MISSED_LINES))
+          COVERAGE=$(echo "scale=2; ($COVERED_LINES / $TOTAL_LINES) * 100" | bc)
+
+          echo "Test Coverage: $COVERAGE%"
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
 
       - name: Fail if coverage < 75%
@@ -39,5 +50,7 @@ jobs:
           if (( $(echo "$COVERAGE < 75" | bc -l) )); then
             echo "❌ Test coverage is below 75%. Fix it before merging."
             exit 1
+          else
+            echo "✅ Test coverage is sufficient ($COVERAGE%)."
           fi
         shell: bash
