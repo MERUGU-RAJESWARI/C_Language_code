@@ -1,9 +1,11 @@
 public class AddTwoNumbers {
+    public int add(int a, int b) {
+        return a + b;
+    }
+
     public static void main(String[] args) {
-        int num1 = 10;
-        int num2 = 20;
-        int sum = num1 + num2;
-        
+        AddTwoNumbers obj = new AddTwoNumbers();
+        int sum = obj.add(10, 20);
         System.out.println("Sum: " + sum);
     }
 }
